@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modal Fretboard — Scale & Mode Visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { height: 100%; }
+  body {
+    font-family: 'Syne', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1a2e;
+    color: #fff;
+    font-size: 14px;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+
+  h1 { font-family: 'Syne', sans-serif; font-size: 36px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 0.3rem; }
+  .subtitle { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 400; letter-spacing: 0.25em; text-transform: uppercase; color: #3eb8f0; margin-bottom: 2rem; }
+
+  /* ── Controls ── */
+  .controls { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.75rem; }
+  .control-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .ctrl-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.07em; color: #7a8fa8; width: 50px; flex-shrink: 0;
+  }
+  .btn-group { display: flex; gap: 5px; flex-wrap: wrap; }
+  .btn {
+    padding: 6px 13px; border-radius: 6px;
+    border: 1.5px solid #253550; background: #111d2e;
+    color: #8aa4c0; font-size: 14px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+    transition: border-color 0.1s, color 0.1s, background 0.1s;
+  }
+  .btn:hover { border-color: #3a5070; color: #ccd8e8; }
+  .btn.key-active  { background: #f97316; border-color: #f97316; color: #fff; font-weight: 700; }
+  .btn.mode-active { background: #0f2234; border-color: #38bdf8; color: #38bdf8; font-weight: 600; }
+
+  /* ── Mode info ── */
+  .mode-info {
+    background: #0a1422; border: 1px solid #1a2840;
+    border-radius: 10px; padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem; display: flex;
+    flex-direction: column; gap: 0.6rem;
+  }
+  .info-top { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+  .info-title { font-size: 19px; font-weight: 700; }
+  .info-alias { font-size: 14px; color: #7a8fa8; }
+  .info-desc { font-size: 14px; color: #7a8fa8; }
+  .note-strip { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+  .note-badge {
+    display: flex; flex-direction: column; align-items: center;
+    border-radius: 6px; padding: 4px 8px; min-width: 32px;
+    background: #141c26; border: 1px solid #1d3a52;
+  }
+  .note-badge.nb-root { background: #3d1500; border-color: #f97316; }
+  .note-badge.nb-char { background: #3d2f00; border-color: #fbbf24; }
+  .nb-deg { font-size: 11px; color: #7a8fa8; font-family: monospace; line-height: 1.2; }
+  .nb-deg.root  { color: #c09820; }
+  .nb-deg.char  { color: #c06020; }
+  .nb-deg.scale { color: #2a8aaa; }
+  .nb-name { font-size: 15px; font-weight: 700; color: #fff; line-height: 1.3; }
+  .nb-name.root  { color: #f97316; }
+  .nb-name.char  { color: #fbbf24; }
+  .nb-name.scale { color: #3eb8f0; }
+
+  /* ── Fretboard ── */
+  .fretboard-outer {
+    overflow-x: auto; margin-bottom: 1.5rem;
+    border-radius: 10px; background: #1e1e1e;
+    border: 1px solid #333333;
+    scrollbar-width: thin;
+    scrollbar-color: #444444 #1e1e1e;
+  }
+  .fretboard-outer::-webkit-scrollbar { height: 6px; }
+  .fretboard-outer::-webkit-scrollbar-track { background: #1e1e1e; }
+  .fretboard-outer::-webkit-scrollbar-thumb { background: #444444; border-radius: 3px; }
+  .fretboard-outer svg { display: block; }
+
+  /* ── Legend ── */
+  .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 7px; font-size: 14px; color: #7a8fa8; }
+  .leg-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  .leg-dot.root { background: #f97316; }
+  .leg-dot.char { background: #fbbf24; }
+  .leg-dot.scale { background: rgba(62,184,240,0.5); }
+</style>
+</head>
+<body>
+
+<h1><span style="color:#3eb8f0;">Modal</span> Fretboard</h1>
+<p class="subtitle">Modes of the Major Scale — butter notes highlighted</p>
+
+<div class="controls">
+  <div class="control-row">
+    <span class="ctrl-label">Key</span>
+    <div class="btn-group" id="key-btns"></div>
+  </div>
+  <div class="control-row">
+    <span class="ctrl-label">Mode</span>
+    <div class="btn-group" id="mode-btns"></div>
+  </div>
+  <div class="control-row">
+    <span class="ctrl-label">View</span>
+    <div class="btn-group" id="fret-btns"></div>
+  </div>
+  <div class="control-row">
+    <span class="ctrl-label">Labels</span>
+    <div class="btn-group" id="label-btns"></div>
+  </div>
+</div>
+
+<div class="mode-info">
+  <div class="info-top">
+    <span class="info-title" id="info-title"></span>
+    <span class="info-alias" id="info-alias"></span>
+  </div>
+  <div class="note-strip" id="note-strip"></div>
+  <div class="info-desc" id="info-desc"></div>
+</div>
+
+<div class="fretboard-outer">
+  <svg id="fretboard"></svg>
+</div>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot root"></div>Root</div>
+  <div class="leg-item"><div class="leg-dot char"></div>Characteristic</div>
+  <div class="leg-item"><div class="leg-dot scale"></div>Scale note</div>
+</div>
+
+<script>
+// ── Music data ──────────────────────────────────────────────────────────────
+
+const CHR_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const CHR_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+// index = semitone (0=C). true = prefer flats for this root
+const USE_FLATS = [false,true,false,true,false,true,false,false,true,false,true,false];
+const KEY_NAMES = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
+// characteristic: the notes that uniquely colour THIS mode vs adjacent modes
+const MODES = [
+  {
+    name:'Ionian', alias:'Major',
+    intervals:[0,2,4,5,7,9,11],
+    characteristic:[4,11],
+    degrees:['1','2','3','4','5','6','7'],
+    desc:'maj3 + maj7 — the bright, resolved major sound'
+  },
+  {
+    name:'Dorian',
+    intervals:[0,2,3,5,7,9,10],
+    characteristic:[3,9],
+    degrees:['1','2','b3','4','5','6','b7'],
+    desc:'b3 + natural 6 — minor with that raised, hopeful 6th'
+  },
+  {
+    name:'Phrygian',
+    intervals:[0,1,3,5,7,8,10],
+    characteristic:[1,8],
+    degrees:['1','b2','b3','4','5','b6','b7'],
+    desc:'b2 + b6 — the flat 2nd is what makes it Phrygian'
+  },
+  {
+    name:'Lydian',
+    intervals:[0,2,4,6,7,9,11],
+    characteristic:[4,6,11],
+    degrees:['1','2','3','#4','5','6','7'],
+    desc:'#4 + maj3 + maj7 — the raised 4th gives it that floating quality'
+  },
+  {
+    name:'Mixolydian',
+    intervals:[0,2,4,5,7,9,10],
+    characteristic:[4,10],
+    degrees:['1','2','3','4','5','6','b7'],
+    desc:'maj3 + b7 — dominant tension without resolving'
+  },
+  {
+    name:'Aeolian', alias:'Natural Minor',
+    intervals:[0,2,3,5,7,8,10],
+    characteristic:[3,8],
+    degrees:['1','2','b3','4','5','b6','b7'],
+    desc:'b3 + b6 — the flat 6th separates it from Dorian'
+  },
+  {
+    name:'Locrian',
+    intervals:[0,1,3,5,6,8,10],
+    characteristic:[1,6],
+    degrees:['1','b2','b3','4','b5','b6','b7'],
+    desc:'b2 + b5 — the diminished 5th makes it inherently unstable'
+  },
+];
+
+// Standard tuning low E → high e (semitones, 0 = C)
+const TUNING = [4, 9, 2, 7, 11, 4];   // E2 A2 D3 G3 B3 E4
+const STR_NAMES = ['E','A','D','G','B','e'];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let selKey   = 2;   // D
+let selMode  = 1;   // Dorian
+let selFrets = 15;
+let selLabel = 'interval';  // 'interval' | 'note'
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function noteName(semi, useFlats) {
+  return (useFlats ? CHR_FLAT : CHR_SHARP)[((semi % 12) + 12) % 12];
+}
+
+// ── Layout constants ─────────────────────────────────────────────────────────
+const LP      = 38;   // left pad (string name column)
+const OPEN_W  = 46;   // open-string column width (before nut)
+const NUT_W   = 7;
+const TP      = 26;   // top pad (fret number row)
+const BP      = 36;   // bottom pad
+const NSTR    = 6;
+
+const SINGLE_DOTS = [3, 5, 7, 9, 15, 17, 19, 21];
+const DOUBLE_DOTS = [12, 24];
+const NUT_X   = LP + OPEN_W;
+
+// Dynamic per render
+let FW, SH, DOT_R, NFRETS_D, FRET_START;
+
+function setLayout() {
+  const isBox = selFrets === 'box';
+  const big   = selFrets === 15;
+  FW       = isBox ? 80 : big ? 64 : 50;
+  SH       = isBox ? 36 : big ? 34 : 30;
+  DOT_R    = isBox ? 13 : big ? 12 : 11;
+  NFRETS_D = isBox ? 5  : selFrets;
+}
+
+function getBoxStart(rootSemi) {
+  const openE = TUNING[0]; // 4 = E
+  let f = ((rootSemi - openE) + 12) % 12;
+  if (f === 0) f = 12; // open E: use octave position
+  return f;
+}
+
+function fretCX(f) { return NUT_X + NUT_W + (f - FRET_START + 0.5) * FW; }
+function fretRX(f) { return NUT_X + NUT_W + (f - FRET_START + 1) * FW; }
+function strY(s)   { return TP + (NSTR - 1 - s) * SH; }
+
+// ── Note classification ───────────────────────────────────────────────────────
+function classify(semi, rootSemi, charSet, scaleSet) {
+  const n = ((semi % 12) + 12) % 12;
+  if (n === ((rootSemi % 12) + 12) % 12) return 'root';
+  if (charSet.has(n)) return 'char';
+  if (scaleSet.has(n)) return 'scale';
+  return null;
+}
+
+const DOT_COLORS = {
+  root:  { fill: '#f97316', stroke: '#c2410c', text: '#fff', opacity: 0.85 },
+  char:  { fill: '#fbbf24', stroke: '#d97706', text: '#fff', opacity: 0.85 },
+  scale: { fill: '#3eb8f0', stroke: '#2090be', text: '#fff', opacity: 0.28 },
+};
+
+// ── SVG builder ───────────────────────────────────────────────────────────────
+function buildSVG(rootSemi, modeIdx) {
+  setLayout();
+  const isBox = selFrets === 'box';
+  FRET_START = isBox ? getBoxStart(rootSemi) : 1;
+
+  const mode     = MODES[modeIdx];
+  const useFlats = USE_FLATS[rootSemi];
+  const scaleSet = new Set(mode.intervals.map(i => (rootSemi + i) % 12));
+  const charSet  = new Set([...mode.characteristic, mode.intervals[2]].map(i => (rootSemi + i) % 12));
+
+  // Map semitone → degree label (e.g. 'R', 'b3', '6')
+  const degMap = {};
+  mode.intervals.forEach((interval, idx) => {
+    const semi = (rootSemi + interval) % 12;
+    degMap[semi] = interval === 0 ? 'R' : mode.degrees[idx];
+  });
+
+  const svgW = LP + OPEN_W + NUT_W + NFRETS_D * FW + 24;
+  const svgH = TP + (NSTR - 1) * SH + BP;
+
+  const el = document.getElementById('fretboard');
+  el.setAttribute('width', svgW);
+  el.setAttribute('height', svgH);
+  el.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+
+  const p = [];
+
+  // fretboard body
+  p.push(`<rect x="${NUT_X + NUT_W}" y="${TP - 5}" width="${NFRETS_D * FW + 14}" height="${(NSTR - 1) * SH + 10}" rx="3" fill="#2d2d2d"/>`);
+
+  const fretEnd = FRET_START + NFRETS_D - 1;
+  const midY    = TP + (NSTR - 1) * SH / 2;
+  const inlayR  = SH > 30 ? 6 : 5;
+  const numFS   = SH > 30 ? 12 : 10;
+  const strFS   = SH > 30 ? 13 : 11;
+
+  // fret inlays
+  for (const f of SINGLE_DOTS) {
+    if (f < FRET_START || f > fretEnd) continue;
+    p.push(`<circle cx="${fretCX(f)}" cy="${midY}" r="${inlayR}" fill="#1a1a1a"/>`);
+  }
+  for (const f of DOUBLE_DOTS) {
+    if (f < FRET_START || f > fretEnd) continue;
+    p.push(`<circle cx="${fretCX(f)}" cy="${midY - SH * 0.28}" r="${inlayR - 1}" fill="#1a1a1a"/>`);
+    p.push(`<circle cx="${fretCX(f)}" cy="${midY + SH * 0.28}" r="${inlayR - 1}" fill="#1a1a1a"/>`);
+  }
+
+  // strings
+  for (let s = 0; s < NSTR; s++) {
+    const y  = strY(s);
+    const sw = 0.8 + (NSTR - 1 - s) * 0.28;
+    p.push(`<line x1="${NUT_X + NUT_W}" y1="${y}" x2="${svgW - 10}" y2="${y}" stroke="#999999" stroke-width="${sw}"/>`);
+    if (!isBox) p.push(`<line x1="${LP}" y1="${y}" x2="${NUT_X}" y2="${y}" stroke="#666666" stroke-width="${sw * 0.8}"/>`);
+  }
+
+  // nut (full view only) or position label (box mode)
+  if (!isBox) {
+    p.push(`<rect x="${NUT_X}" y="${TP - 5}" width="${NUT_W}" height="${(NSTR - 1) * SH + 10}" rx="2" fill="#aaaaaa"/>`);
+  } else {
+    p.push(`<text x="${LP + OPEN_W / 2}" y="${midY + 5}" text-anchor="middle" font-size="11" font-family="monospace" fill="#5a7090">${FRET_START}fr</text>`);
+  }
+
+  // fret lines
+  for (let f = FRET_START; f <= fretEnd; f++) {
+    const x = fretRX(f);
+    p.push(`<line x1="${x}" y1="${TP - 3}" x2="${x}" y2="${TP + (NSTR - 1) * SH + 3}" stroke="#555555" stroke-width="2"/>`);
+  }
+
+  // fret numbers (actual fret numbers)
+  for (let f = FRET_START; f <= fretEnd; f++) {
+    const x   = fretCX(f);
+    const hot = SINGLE_DOTS.includes(f) || DOUBLE_DOTS.includes(f);
+    p.push(`<text x="${x}" y="${TP - 9}" text-anchor="middle" font-size="${numFS}" font-family="monospace" fill="${hot ? '#7a8fa8' : '#3a4a5a'}">${f}</text>`);
+  }
+
+  // string labels
+  for (let s = 0; s < NSTR; s++) {
+    p.push(`<text x="${LP - 6}" y="${strY(s) + 4}" text-anchor="end" font-size="${strFS}" font-family="monospace" fill="#4a6080">${STR_NAMES[s]}</text>`);
+  }
+
+  // open string dots (full view only)
+  if (!isBox) {
+    for (let s = 0; s < NSTR; s++) {
+      const semi = TUNING[s] % 12;
+      const type = classify(semi, rootSemi, charSet, scaleSet);
+      if (!type) continue;
+      p.push(dot(LP + OPEN_W / 2, strY(s), noteName(semi, useFlats), degMap[semi] || '', DOT_COLORS[type]));
+    }
+  }
+
+  // fretted dots
+  for (let s = 0; s < NSTR; s++) {
+    for (let f = FRET_START; f <= fretEnd; f++) {
+      const semi = (TUNING[s] + f) % 12;
+      const type = classify(semi, rootSemi, charSet, scaleSet);
+      if (!type) continue;
+      p.push(dot(fretCX(f), strY(s), noteName(semi, useFlats), degMap[semi] || '', DOT_COLORS[type]));
+    }
+  }
+
+  el.innerHTML = p.join('');
+}
+
+function dot(cx, cy, nname, deg, c) {
+  const label = selLabel === 'interval' ? deg : nname;
+  const fs = label.length > 2 ? 7 : label.length === 2 ? 8 : 10;
+  return [
+    `<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.2" fill-opacity="${c.opacity}"/>`,
+    `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" font-family="system-ui,sans-serif" fill="#fff">${label}</text>`,
+  ].join('');
+}
+
+// ── Info panel ───────────────────────────────────────────────────────────────
+function updateInfo(rootSemi, modeIdx) {
+  const mode     = MODES[modeIdx];
+  const useFlats = USE_FLATS[rootSemi];
+  const scaleSet = new Set(mode.intervals.map(i => (rootSemi + i) % 12));
+  const charSet  = new Set([...mode.characteristic, mode.intervals[2]].map(i => (rootSemi + i) % 12));
+
+  document.getElementById('info-title').textContent = `${KEY_NAMES[rootSemi]} ${mode.name}`;
+  document.getElementById('info-alias').textContent = mode.alias ? `(${mode.alias})` : '';
+  document.getElementById('info-desc').textContent  = mode.desc;
+
+  const strip = document.getElementById('note-strip');
+  strip.innerHTML = '';
+
+  mode.intervals.forEach((interval, idx) => {
+    const semi = (rootSemi + interval) % 12;
+    const name = noteName(semi, useFlats);
+    const deg  = mode.degrees[idx];
+    const isRoot = interval === 0;
+    const isChar = charSet.has(semi);
+
+    const badge = document.createElement('div');
+    badge.className = 'note-badge' + (isRoot ? ' nb-root' : isChar ? ' nb-char' : '');
+
+    const typeClass = isRoot ? 'root' : isChar ? 'char' : 'scale';
+    const dispDeg = isRoot ? 'R' : deg;
+    badge.innerHTML = `<span class="nb-deg ${typeClass}">${dispDeg}</span><span class="nb-name ${typeClass}">${name}</span>`;
+    strip.appendChild(badge);
+  });
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+function initButtons() {
+  const kw = document.getElementById('key-btns');
+  KEY_NAMES.forEach((name, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (i === selKey ? ' key-active' : '');
+    b.textContent = name;
+    b.onclick = () => {
+      selKey = i;
+      kw.querySelectorAll('.btn').forEach((el, j) => {
+        el.className = 'btn' + (j === i ? ' key-active' : '');
+      });
+      render();
+    };
+    kw.appendChild(b);
+  });
+
+  const mw = document.getElementById('mode-btns');
+  MODES.forEach((m, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (i === selMode ? ' mode-active' : '');
+    b.textContent = `${i + 1}. ${m.name}`;
+    b.onclick = () => {
+      selMode = i;
+      mw.querySelectorAll('.btn').forEach((el, j) => {
+        el.className = 'btn' + (j === i ? ' mode-active' : '');
+      });
+      render();
+    };
+    mw.appendChild(b);
+  });
+}
+
+function initLabelToggle() {
+  const lw = document.getElementById('label-btns');
+  [{ label: 'Interval', val: 'interval' }, { label: 'Note', val: 'note' }].forEach(({ label, val }) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (val === selLabel ? ' mode-active' : '');
+    b.textContent = label;
+    b.onclick = () => {
+      selLabel = val;
+      lw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
+      b.className = 'btn mode-active';
+      render();
+    };
+    lw.appendChild(b);
+  });
+}
+
+function initFretToggle() {
+  const fw = document.getElementById('fret-btns');
+  [{ label: 'Box', val: 'box' }, { label: '15 frets', val: 15 }, { label: '24 frets', val: 24 }].forEach(({ label, val }) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (val === selFrets ? ' mode-active' : '');
+    b.textContent = label;
+    b.onclick = () => {
+      selFrets = val;
+      fw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
+      b.className = 'btn mode-active';
+      render();
+    };
+    fw.appendChild(b);
+  });
+}
+
+function render() {
+  buildSVG(selKey, selMode);
+  updateInfo(selKey, selMode);
+}
+
+initButtons();
+initFretToggle();
+initLabelToggle();
+render();
+</script>
+</body>
+</html>
