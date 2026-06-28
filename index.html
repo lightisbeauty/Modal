@@ -86,8 +86,9 @@
   .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; }
   .leg-item { display: flex; align-items: center; gap: 7px; font-size: 14px; color: #7a8fa8; }
   .leg-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
-  .leg-dot.root { background: #f97316; }
-  .leg-dot.char { background: #fbbf24; }
+  .leg-dot.root  { background: #f97316; }
+  .leg-dot.char  { background: #fbbf24; }
+  .leg-dot.triad { background: #db3eb1; }
   .leg-dot.scale { background: rgba(62,184,240,0.5); }
 </style>
 </head>
@@ -100,6 +101,7 @@
   <div class="control-row">
     <span class="ctrl-label">Key</span>
     <div class="btn-group" id="key-btns"></div>
+    <div class="btn-group" id="notation-btns" style="margin-left:0.75rem;"></div>
   </div>
   <div class="control-row">
     <span class="ctrl-label">Mode</span>
@@ -108,6 +110,10 @@
   <div class="control-row">
     <span class="ctrl-label">View</span>
     <div class="btn-group" id="fret-btns"></div>
+  </div>
+  <div class="control-row">
+    <span class="ctrl-label">Triad</span>
+    <div class="btn-group" id="triad-btns"></div>
   </div>
   <div class="control-row">
     <span class="ctrl-label">Labels</span>
@@ -130,8 +136,9 @@
 
 <div class="legend">
   <div class="leg-item"><div class="leg-dot root"></div>Root</div>
-  <div class="leg-item"><div class="leg-dot char"></div>Characteristic</div>
-  <div class="leg-item"><div class="leg-dot scale"></div>Scale note</div>
+  <div class="leg-item"><div class="leg-dot char"></div>Butter Note</div>
+  <div class="leg-item"><div class="leg-dot triad"></div>Triad</div>
+  <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
 <script>
@@ -139,6 +146,26 @@
 
 const CHR_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const CHR_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+
+// Diatonic note naming — always spells notes by scale degree, never enharmonic clashes
+const ROOT_LETTER = [0,1,1,2,2,3,3,4,5,5,6,6]; // C Db D Eb E F F# G Ab A Bb B
+const LETTERS     = ['C','D','E','F','G','A','B'];
+const LETTER_SEMI = [0,2,4,5,7,9,11];
+
+function diatonicName(rootSemi, degreeIdx, interval) {
+  const tl   = (ROOT_LETTER[rootSemi % 12] + degreeIdx) % 7;
+  const nat  = LETTER_SEMI[tl];
+  const act  = (rootSemi + interval) % 12;
+  const diff = ((act - nat) + 12) % 12;
+  return LETTERS[tl] + (diff===0?'':diff===1?'#':diff===11?'b':diff===2?'##':'bb');
+}
+
+function resolvedName(rootSemi, degreeIdx, interval) {
+  const semi = ((rootSemi + interval) % 12 + 12) % 12;
+  if (selNotation === '#') return CHR_SHARP[semi];
+  if (selNotation === 'b') return CHR_FLAT[semi];
+  return diatonicName(rootSemi, degreeIdx, interval);
+}
 // index = semitone (0=C). true = prefer flats for this root
 const USE_FLATS = [false,true,false,true,false,true,false,false,true,false,true,false];
 const KEY_NAMES = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
@@ -205,6 +232,8 @@ let selKey   = 2;   // D
 let selMode  = 1;   // Dorian
 let selFrets = 15;
 let selLabel = 'interval';  // 'interval' | 'note'
+let selTriad    = null;      // null | 0–6 (diatonic degree index)
+let selNotation = 'auto';   // 'auto' | '#' | 'b'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function noteName(semi, useFlats) {
@@ -227,12 +256,13 @@ const NUT_X   = LP + OPEN_W;
 let FW, SH, DOT_R, NFRETS_D, FRET_START;
 
 function setLayout() {
-  const isBox = selFrets === 'box';
-  const big   = selFrets === 15;
+  const isBox    = selFrets === 'box';
+  const isTriads = selFrets === 'triads';
+  const big      = selFrets === 15 || isTriads;
   FW       = isBox ? 80 : big ? 64 : 50;
   SH       = isBox ? 36 : big ? 34 : 30;
   DOT_R    = isBox ? 13 : big ? 12 : 11;
-  NFRETS_D = isBox ? 5  : selFrets;
+  NFRETS_D = isBox ? 5  : isTriads ? 15 : selFrets;
 }
 
 function getBoxStart(rootSemi) {
@@ -246,10 +276,25 @@ function fretCX(f) { return NUT_X + NUT_W + (f - FRET_START + 0.5) * FW; }
 function fretRX(f) { return NUT_X + NUT_W + (f - FRET_START + 1) * FW; }
 function strY(s)   { return TP + (NSTR - 1 - s) * SH; }
 
+// ── Diatonic triad builder ────────────────────────────────────────────────────
+function getTriads(rootSemi, modeIdx) {
+  const ivs = MODES[modeIdx].intervals;
+  return ivs.map((iv, i) => {
+    const t3 = ((ivs[(i+2)%7] - iv) + 12) % 12;
+    const t5 = ((ivs[(i+4)%7] - iv) + 12) % 12;
+    const q  = t3===4&&t5===7?'':t3===3&&t5===7?'m':t3===3&&t5===6?'°':t3===4&&t5===8?'+':'?';
+    return {
+      name:  resolvedName(rootSemi, i, iv) + q,
+      notes: new Set([(rootSemi+iv)%12, (rootSemi+ivs[(i+2)%7])%12, (rootSemi+ivs[(i+4)%7])%12]),
+    };
+  });
+}
+
 // ── Note classification ───────────────────────────────────────────────────────
-function classify(semi, rootSemi, charSet, scaleSet) {
+function classify(semi, rootSemi, charSet, scaleSet, triadSet) {
   const n = ((semi % 12) + 12) % 12;
   if (n === ((rootSemi % 12) + 12) % 12) return 'root';
+  if (triadSet && triadSet.has(n)) return 'triad';
   if (charSet.has(n)) return 'char';
   if (scaleSet.has(n)) return 'scale';
   return null;
@@ -258,26 +303,34 @@ function classify(semi, rootSemi, charSet, scaleSet) {
 const DOT_COLORS = {
   root:  { fill: '#f97316', stroke: '#c2410c', text: '#fff', opacity: 0.85 },
   char:  { fill: '#fbbf24', stroke: '#d97706', text: '#fff', opacity: 0.85 },
-  scale: { fill: '#3eb8f0', stroke: '#2090be', text: '#fff', opacity: 0.28 },
+  triad:       { fill: '#db3eb1', stroke: '#a02b82', text: '#fff', opacity: 0.85 },
+  scale:       { fill: '#3eb8f0', stroke: '#2090be', text: '#fff', opacity: 0.28 },
+  scale_ghost: { fill: '#3eb8f0', stroke: '#2090be', text: '#fff', opacity: 0.10, textOpacity: 0 },
 };
 
 // ── SVG builder ───────────────────────────────────────────────────────────────
 function buildSVG(rootSemi, modeIdx) {
   setLayout();
-  const isBox = selFrets === 'box';
+  const isBox    = selFrets === 'box';
+  const isTriads = selFrets === 'triads';
   FRET_START = isBox ? getBoxStart(rootSemi) : 1;
 
   const mode     = MODES[modeIdx];
-  const useFlats = USE_FLATS[rootSemi];
   const scaleSet = new Set(mode.intervals.map(i => (rootSemi + i) % 12));
   const charSet  = new Set([...mode.characteristic, mode.intervals[2]].map(i => (rootSemi + i) % 12));
 
-  // Map semitone → degree label (e.g. 'R', 'b3', '6')
-  const degMap = {};
+  // Diatonic note names and degree labels keyed by absolute semitone
+  const nameMap = {};
+  const degMap  = {};
   mode.intervals.forEach((interval, idx) => {
     const semi = (rootSemi + interval) % 12;
-    degMap[semi] = interval === 0 ? 'R' : mode.degrees[idx];
+    nameMap[semi] = resolvedName(rootSemi, idx, interval);
+    degMap[semi]  = interval === 0 ? 'R' : mode.degrees[idx];
   });
+
+  // Triad set for current selection
+  const triads   = getTriads(rootSemi, modeIdx);
+  const triadSet = selTriad !== null ? triads[selTriad].notes : null;
 
   const svgW = LP + OPEN_W + NUT_W + NFRETS_D * FW + 24;
   const svgH = TP + (NSTR - 1) * SH + BP;
@@ -330,11 +383,12 @@ function buildSVG(rootSemi, modeIdx) {
     p.push(`<line x1="${x}" y1="${TP - 3}" x2="${x}" y2="${TP + (NSTR - 1) * SH + 3}" stroke="#555555" stroke-width="2"/>`);
   }
 
-  // fret numbers (actual fret numbers)
+  // fret numbers below the bottom string
+  const fretNumY = TP + (NSTR - 1) * SH + 18;
   for (let f = FRET_START; f <= fretEnd; f++) {
     const x   = fretCX(f);
     const hot = SINGLE_DOTS.includes(f) || DOUBLE_DOTS.includes(f);
-    p.push(`<text x="${x}" y="${TP - 9}" text-anchor="middle" font-size="${numFS}" font-family="monospace" fill="${hot ? '#7a8fa8' : '#3a4a5a'}">${f}</text>`);
+    p.push(`<text x="${x}" y="${fretNumY}" text-anchor="middle" font-size="${numFS}" font-family="monospace" fill="${hot ? '#7a8fa8' : '#3a4a5a'}">${f}</text>`);
   }
 
   // string labels
@@ -346,9 +400,10 @@ function buildSVG(rootSemi, modeIdx) {
   if (!isBox) {
     for (let s = 0; s < NSTR; s++) {
       const semi = TUNING[s] % 12;
-      const type = classify(semi, rootSemi, charSet, scaleSet);
+      const type = classify(semi, rootSemi, charSet, scaleSet, triadSet);
       if (!type) continue;
-      p.push(dot(LP + OPEN_W / 2, strY(s), noteName(semi, useFlats), degMap[semi] || '', DOT_COLORS[type]));
+      const ghost = isTriads && triadSet && type !== 'root' && type !== 'triad';
+      p.push(dot(LP + OPEN_W / 2, strY(s), nameMap[semi] || '', degMap[semi] || '', ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
     }
   }
 
@@ -356,9 +411,10 @@ function buildSVG(rootSemi, modeIdx) {
   for (let s = 0; s < NSTR; s++) {
     for (let f = FRET_START; f <= fretEnd; f++) {
       const semi = (TUNING[s] + f) % 12;
-      const type = classify(semi, rootSemi, charSet, scaleSet);
+      const type = classify(semi, rootSemi, charSet, scaleSet, triadSet);
       if (!type) continue;
-      p.push(dot(fretCX(f), strY(s), noteName(semi, useFlats), degMap[semi] || '', DOT_COLORS[type]));
+      const ghost = isTriads && triadSet && type !== 'root' && type !== 'triad';
+      p.push(dot(fretCX(f), strY(s), nameMap[semi] || '', degMap[semi] || '', ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
     }
   }
 
@@ -366,22 +422,21 @@ function buildSVG(rootSemi, modeIdx) {
 }
 
 function dot(cx, cy, nname, deg, c) {
-  const label = selLabel === 'interval' ? deg : nname;
-  const fs = label.length > 2 ? 7 : label.length === 2 ? 8 : 10;
+  const label      = selLabel === 'interval' ? deg : nname;
+  const fs         = label.length > 2 ? 7 : label.length === 2 ? 8 : 10;
+  const textOpacity = c.textOpacity !== undefined ? c.textOpacity : 1;
   return [
     `<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.2" fill-opacity="${c.opacity}"/>`,
-    `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" font-family="system-ui,sans-serif" fill="#fff">${label}</text>`,
+    `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" fill-opacity="${textOpacity}">${label}</text>`,
   ].join('');
 }
 
 // ── Info panel ───────────────────────────────────────────────────────────────
 function updateInfo(rootSemi, modeIdx) {
-  const mode     = MODES[modeIdx];
-  const useFlats = USE_FLATS[rootSemi];
-  const scaleSet = new Set(mode.intervals.map(i => (rootSemi + i) % 12));
-  const charSet  = new Set([...mode.characteristic, mode.intervals[2]].map(i => (rootSemi + i) % 12));
+  const mode    = MODES[modeIdx];
+  const charSet = new Set([...mode.characteristic, mode.intervals[2]].map(i => (rootSemi + i) % 12));
 
-  document.getElementById('info-title').textContent = `${KEY_NAMES[rootSemi]} ${mode.name}`;
+  document.getElementById('info-title').textContent = `${keyLabel(rootSemi)} ${mode.name}`;
   document.getElementById('info-alias').textContent = mode.alias ? `(${mode.alias})` : '';
   document.getElementById('info-desc').textContent  = mode.desc;
 
@@ -390,7 +445,7 @@ function updateInfo(rootSemi, modeIdx) {
 
   mode.intervals.forEach((interval, idx) => {
     const semi = (rootSemi + interval) % 12;
-    const name = noteName(semi, useFlats);
+    const name = resolvedName(rootSemi, idx, interval);
     const deg  = mode.degrees[idx];
     const isRoot = interval === 0;
     const isChar = charSet.has(semi);
@@ -406,12 +461,19 @@ function updateInfo(rootSemi, modeIdx) {
 }
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
-function initButtons() {
+function keyLabel(i) {
+  if (selNotation === '#') return CHR_SHARP[i];
+  if (selNotation === 'b') return CHR_FLAT[i];
+  return KEY_NAMES[i];
+}
+
+function buildKeyBtns() {
   const kw = document.getElementById('key-btns');
-  KEY_NAMES.forEach((name, i) => {
+  kw.innerHTML = '';
+  KEY_NAMES.forEach((_, i) => {
     const b = document.createElement('button');
     b.className = 'btn' + (i === selKey ? ' key-active' : '');
-    b.textContent = name;
+    b.textContent = keyLabel(i);
     b.onclick = () => {
       selKey = i;
       kw.querySelectorAll('.btn').forEach((el, j) => {
@@ -421,6 +483,10 @@ function initButtons() {
     };
     kw.appendChild(b);
   });
+}
+
+function initButtons() {
+  buildKeyBtns();
 
   const mw = document.getElementById('mode-btns');
   MODES.forEach((m, i) => {
@@ -456,12 +522,13 @@ function initLabelToggle() {
 
 function initFretToggle() {
   const fw = document.getElementById('fret-btns');
-  [{ label: 'Box', val: 'box' }, { label: '15 frets', val: 15 }, { label: '24 frets', val: 24 }].forEach(({ label, val }) => {
+  [{ label: '3NPS', val: 'box' }, { label: '15 frets', val: 15 }, { label: '24 frets', val: 24 }, { label: 'Triads', val: 'triads' }].forEach(({ label, val }) => {
     const b = document.createElement('button');
     b.className = 'btn' + (val === selFrets ? ' mode-active' : '');
     b.textContent = label;
     b.onclick = () => {
       selFrets = val;
+      if (val === 'triads' && selTriad === null) selTriad = 0;
       fw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
       b.className = 'btn mode-active';
       render();
@@ -470,14 +537,63 @@ function initFretToggle() {
   });
 }
 
+function buildTriadBtns() {
+  const tw = document.getElementById('triad-btns');
+  tw.innerHTML = '';
+  const triads = getTriads(selKey, selMode);
+
+  const none = document.createElement('button');
+  none.className = 'btn' + (selTriad === null ? ' mode-active' : '');
+  none.textContent = '—';
+  none.onclick = () => {
+    selTriad = null;
+    tw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
+    none.className = 'btn mode-active';
+    render();
+  };
+  tw.appendChild(none);
+
+  triads.forEach((triad, i) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (i === selTriad ? ' mode-active' : '');
+    b.textContent = triad.name;
+    b.onclick = () => {
+      selTriad = i;
+      tw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
+      b.className = 'btn mode-active';
+      render();
+    };
+    tw.appendChild(b);
+  });
+}
+
 function render() {
+  buildKeyBtns();
   buildSVG(selKey, selMode);
   updateInfo(selKey, selMode);
+  buildTriadBtns();
+}
+
+function initNotationToggle() {
+  const nw = document.getElementById('notation-btns');
+  ['b', '#'].forEach(val => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (selNotation === val ? ' mode-active' : '');
+    b.textContent = val;
+    b.onclick = () => {
+      selNotation = (selNotation === val) ? 'auto' : val;
+      nw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
+      if (selNotation !== 'auto') b.className = 'btn mode-active';
+      render();
+    };
+    nw.appendChild(b);
+  });
 }
 
 initButtons();
 initFretToggle();
 initLabelToggle();
+initNotationToggle();
 render();
 </script>
 </body>

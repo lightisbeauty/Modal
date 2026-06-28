@@ -1,5 +1,15 @@
 # Changelog — Modal Fretboard
 
+## v1.1 — Build 26062802 (2026-06-28)
+
+### Changes
+- Triads view: non-triad scale notes now appear as faded ghost dots (context without clutter)
+- View button "Box" renamed to "3NPS" (3 notes per string)
+- #/b notation toggle now updates Key button labels and the info title
+- Legend: "Scale note" → "Scale tone"
+
+---
+
 ## v1.0 — Build 26062801 (2026-06-28)
 
 Initial public release.
