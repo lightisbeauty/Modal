@@ -104,18 +104,21 @@
 
   /* ── Pad button ── */
   @keyframes pad-pulse {
-    0%, 100% { box-shadow: 0 0 4px 1px rgba(62,184,240,0.15); border-color: #1d3050; }
-    50%       { box-shadow: 0 0 10px 3px rgba(62,184,240,0.55); border-color: #3eb8f0; }
+    0%, 100% { box-shadow: 0 0 5px 1px rgba(62,184,240,0.15); border-color: #1d3050; }
+    50%       { box-shadow: 0 0 14px 4px rgba(62,184,240,0.55); border-color: #3eb8f0; }
   }
+  .pad-wrap { padding-left: 1.75rem; border-left: 1px solid #1d2d45; display: flex; align-items: center; }
   .pad-btn {
-    background: #101e30; border: 1px solid #1d3050;
-    color: #3eb8f0; font-size: 15px; padding: 2px 11px;
-    border-radius: 6px; cursor: pointer; transition: background 0.15s;
-    line-height: 1.6; margin-left: 0.5rem; flex-shrink: 0;
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: 26px; color: #3eb8f0;
+    background: #0d1a2e; border: 1.5px solid #1d3050;
+    border-radius: 10px; padding: 10px 22px; min-width: 80px;
+    cursor: pointer; transition: background 0.15s;
+    line-height: 1.1; white-space: nowrap;
     animation: pad-pulse 2.8s ease-in-out infinite;
   }
-  .pad-btn:hover { background: #1a2e48; }
-  .pad-btn.pad-active { background: #db3eb1; border-color: #a02b82; color: #fff; animation: none; box-shadow: 0 0 10px 3px rgba(219,62,177,0.45); }
+  .pad-btn:hover { background: #142030; }
+  .pad-btn.pad-active { background: #2d0a28; border-color: #db3eb1; color: #db3eb1; animation: none; box-shadow: 0 0 12px 3px rgba(219,62,177,0.45); }
 
   /* ── Build tag ── */
   .build-tag { font-family: 'DM Mono', monospace; font-size: 10px; color: #2a3a50; margin-top: 2rem; letter-spacing: 0.1em; }
@@ -156,13 +159,15 @@
       <div class="info-top">
         <span class="info-title" id="info-title"></span>
         <span class="info-alias" id="info-alias"></span>
-        <button id="pad-btn" class="pad-btn" onclick="togglePad()">♪</button>
       </div>
       <div class="note-strip" id="note-strip"></div>
     </div>
     <div id="chord-strip-wrap" style="display:none">
       <div class="chord-strip-name" id="chord-strip-title"></div>
       <div class="note-strip" id="chord-strip"></div>
+    </div>
+    <div class="pad-wrap">
+      <button id="pad-btn" class="pad-btn" onclick="togglePad()">—</button>
     </div>
   </div>
   <div class="info-desc" id="info-desc"></div>
@@ -179,7 +184,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.5 · build 26062906</div>
+<div class="build-tag">v1.5 · build 26062907</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -711,6 +716,7 @@ function render() {
   buildSVG(selKey, selMode);
   updateInfo(selKey, selMode);
   updateChordStrip(selKey, selMode);
+  updatePadBtn();
   buildTriadBtns();
 }
 
@@ -811,15 +817,20 @@ function stopPad(instant) {
   }, instant ? 150 : 1800);
 }
 
+function updatePadBtn() {
+  const btn = document.getElementById('pad-btn');
+  if (btn) btn.textContent = getTriads(selKey, selMode)[0].name;
+}
+
 function togglePad() {
   const btn = document.getElementById('pad-btn');
   if (!padPlaying) {
     startPad(); padPlaying = true;
     padPrevKey = selKey; padPrevMode = selMode;
-    btn.textContent = '■'; btn.classList.add('pad-active');
+    btn.classList.add('pad-active');
   } else {
     stopPad(false); padPlaying = false;
-    btn.textContent = '♪'; btn.classList.remove('pad-active');
+    btn.classList.remove('pad-active');
   }
 }
 
@@ -847,7 +858,7 @@ function resetPad() {
   if (!padPlaying) return;
   stopPad(true); padPlaying = false;
   const btn = document.getElementById('pad-btn');
-  if (btn) { btn.textContent = '♪'; btn.classList.remove('pad-active'); }
+  if (btn) btn.classList.remove('pad-active');
 }
 
 initButtons();
