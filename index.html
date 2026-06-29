@@ -68,6 +68,17 @@
   .nb-name.root  { color: #f97316; }
   .nb-name.char  { color: #fbbf24; }
   .nb-name.scale { color: #3eb8f0; }
+  /* chord strip */
+  .info-strips { display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
+  .key-info { display: flex; flex-direction: column; gap: 0.3rem; }
+  #chord-strip-wrap { display: flex; flex-direction: column; gap: 0.3rem; padding-left: 1.75rem; border-left: 1px solid #1d2d45; }
+  .chord-strip-name { font-size: 19px; font-weight: 700; color: #db3eb1; line-height: 1.2; }
+  .note-badge.nb-chord-root { background: #2d0a28; border-color: #db3eb1; box-shadow: 0 0 0 1.5px rgba(255,255,255,0.28); }
+  .note-badge.nb-chord-tone { background: #1e0820; border-color: #7a2062; }
+  .nb-deg.chord-root { color: #d060b0; }
+  .nb-deg.chord-tone { color: #804070; }
+  .nb-name.chord-root { color: #db3eb1; }
+  .nb-name.chord-tone { color: #b050a0; }
 
   /* ── Fretboard ── */
   .fretboard-outer {
@@ -125,11 +136,19 @@
 </div>
 
 <div class="mode-info">
-  <div class="info-top">
-    <span class="info-title" id="info-title"></span>
-    <span class="info-alias" id="info-alias"></span>
+  <div class="info-strips">
+    <div class="key-info">
+      <div class="info-top">
+        <span class="info-title" id="info-title"></span>
+        <span class="info-alias" id="info-alias"></span>
+      </div>
+      <div class="note-strip" id="note-strip"></div>
+    </div>
+    <div id="chord-strip-wrap" style="display:none">
+      <div class="chord-strip-name" id="chord-strip-title"></div>
+      <div class="note-strip" id="chord-strip"></div>
+    </div>
   </div>
-  <div class="note-strip" id="note-strip"></div>
   <div class="info-desc" id="info-desc"></div>
 </div>
 
@@ -144,7 +163,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.3 · build 26062804</div>
+<div class="build-tag">v1.4 · build 26062901</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -336,6 +355,7 @@ function classify(semi, rootSemi, charSet, scaleSet, triadSet) {
 
 const DOT_COLORS = {
   root:        { fill: '#f97316', stroke: '#c2410c', text: '#fff', opacity: 0.85 },
+  root_faded:  { fill: '#f97316', stroke: '#c2410c', text: '#fff', opacity: 0.22, textOpacity: 0 },
   char:        { fill: '#fbbf24', stroke: '#d97706', text: '#fff', opacity: 0.85 },
   triad:       { fill: '#db3eb1', stroke: '#a02b82', text: '#fff', opacity: 0.85 },
   triad_root:  { fill: '#db3eb1', stroke: '#a02b82', text: '#fff', opacity: 0.85, ring: 'rgba(255,255,255,0.75)' },
@@ -443,7 +463,11 @@ function buildSVG(rootSemi, modeIdx) {
       const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
       const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
       const colors = ghost ? DOT_COLORS.scale_ghost
-        : (isGhostMode && triadSet) ? ((chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root : DOT_COLORS.triad)
+        : (isGhostMode && triadSet) ? (
+            (chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root
+            : (type === 'root') ? DOT_COLORS.root_faded
+            : DOT_COLORS.triad
+          )
         : DOT_COLORS[type];
       p.push(dot(LP + OPEN_W / 2, strY(s), nameMap[semi] || '', deg, colors));
     }
@@ -458,7 +482,11 @@ function buildSVG(rootSemi, modeIdx) {
       const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
       const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
       const colors = ghost ? DOT_COLORS.scale_ghost
-        : (isGhostMode && triadSet) ? ((chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root : DOT_COLORS.triad)
+        : (isGhostMode && triadSet) ? (
+            (chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root
+            : (type === 'root') ? DOT_COLORS.root_faded
+            : DOT_COLORS.triad
+          )
         : DOT_COLORS[type];
       p.push(dot(fretCX(f), strY(s), nameMap[semi] || '', deg, colors));
     }
@@ -503,6 +531,41 @@ function updateInfo(rootSemi, modeIdx) {
     const typeClass = isRoot ? 'root' : isChar ? 'char' : 'scale';
     const dispDeg = isRoot ? 'R' : deg;
     badge.innerHTML = `<span class="nb-deg ${typeClass}">${dispDeg}</span><span class="nb-name ${typeClass}">${name}</span>`;
+    strip.appendChild(badge);
+  });
+}
+
+function updateChordStrip(rootSemi, modeIdx) {
+  const wrap = document.getElementById('chord-strip-wrap');
+  const isGhostMode = selFrets === 'triads' || selFrets === '7ths';
+  if (!isGhostMode || selTriad === null) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+
+  const is7ths = selFrets === '7ths';
+  const chords = is7ths ? get7ths(rootSemi, modeIdx) : getTriads(rootSemi, modeIdx);
+  const chord  = chords[selTriad];
+  const degMap = is7ths ? chord.degMap7 : chord.degMap3;
+
+  const mode = MODES[modeIdx];
+  const nameMap = {};
+  mode.intervals.forEach((interval, idx) => {
+    nameMap[(rootSemi + interval) % 12] = resolvedName(rootSemi, idx, interval);
+  });
+
+  document.getElementById('chord-strip-title').textContent = chord.name;
+  const strip = document.getElementById('chord-strip');
+  strip.innerHTML = '';
+
+  const INT_ORDER = ['R', 'b2', 'b3', '3', 'b5', '5', '#5', 'bb7', 'b7', '7'];
+  const entries = Object.entries(degMap).map(([k, v]) => [parseInt(k), v]);
+  entries.sort((a, b) => INT_ORDER.indexOf(a[1]) - INT_ORDER.indexOf(b[1]));
+
+  entries.forEach(([semi, intLabel]) => {
+    const name = nameMap[semi] || '';
+    const isRoot = intLabel === 'R';
+    const badge = document.createElement('div');
+    badge.className = 'note-badge' + (isRoot ? ' nb-chord-root' : ' nb-chord-tone');
+    badge.innerHTML = `<span class="nb-deg ${isRoot ? 'chord-root' : 'chord-tone'}">${intLabel}</span><span class="nb-name ${isRoot ? 'chord-root' : 'chord-tone'}">${name}</span>`;
     strip.appendChild(badge);
   });
 }
@@ -623,6 +686,7 @@ function render() {
   buildKeyBtns();
   buildSVG(selKey, selMode);
   updateInfo(selKey, selMode);
+  updateChordStrip(selKey, selMode);
   buildTriadBtns();
 }
 
