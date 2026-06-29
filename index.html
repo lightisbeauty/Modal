@@ -575,7 +575,8 @@ function initFretToggle() {
     b.textContent = label;
     b.onclick = () => {
       selFrets = val;
-      if ((val === 'triads' || val === '7ths') && selTriad === null) selTriad = 0;
+      if (val === 'triads' || val === '7ths') { if (selTriad === null) selTriad = 0; }
+      else selTriad = null;
       fw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
       b.className = 'btn mode-active';
       render();
