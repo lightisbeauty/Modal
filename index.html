@@ -112,7 +112,7 @@
     <div class="btn-group" id="fret-btns"></div>
   </div>
   <div class="control-row">
-    <span class="ctrl-label">Triad</span>
+    <span class="ctrl-label" id="chord-label">Triad</span>
     <div class="btn-group" id="triad-btns"></div>
   </div>
   <div class="control-row">
@@ -137,7 +137,7 @@
 <div class="legend">
   <div class="leg-item"><div class="leg-dot root"></div>Root</div>
   <div class="leg-item"><div class="leg-dot char"></div>Butter Note</div>
-  <div class="leg-item"><div class="leg-dot triad"></div>Triad</div>
+  <div class="leg-item"><div class="leg-dot triad"></div>Chord tone</div>
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
@@ -258,11 +258,12 @@ let FW, SH, DOT_R, NFRETS_D, FRET_START;
 function setLayout() {
   const isBox    = selFrets === 'box';
   const isTriads = selFrets === 'triads';
-  const big      = selFrets === 15 || isTriads;
+  const is7ths   = selFrets === '7ths';
+  const big      = selFrets === 15 || isTriads || is7ths;
   FW       = isBox ? 80 : big ? 64 : 50;
   SH       = isBox ? 36 : big ? 34 : 30;
   DOT_R    = isBox ? 13 : big ? 12 : 11;
-  NFRETS_D = isBox ? 5  : isTriads ? 15 : selFrets;
+  NFRETS_D = isBox ? 5  : (isTriads || is7ths) ? 15 : selFrets;
 }
 
 function getBoxStart(rootSemi) {
@@ -276,16 +277,44 @@ function fretCX(f) { return NUT_X + NUT_W + (f - FRET_START + 0.5) * FW; }
 function fretRX(f) { return NUT_X + NUT_W + (f - FRET_START + 1) * FW; }
 function strY(s)   { return TP + (NSTR - 1 - s) * SH; }
 
-// ── Diatonic triad builder ────────────────────────────────────────────────────
+// ── Diatonic chord builders ───────────────────────────────────────────────────
 function getTriads(rootSemi, modeIdx) {
   const ivs = MODES[modeIdx].intervals;
   return ivs.map((iv, i) => {
     const t3 = ((ivs[(i+2)%7] - iv) + 12) % 12;
     const t5 = ((ivs[(i+4)%7] - iv) + 12) % 12;
     const q  = t3===4&&t5===7?'':t3===3&&t5===7?'m':t3===3&&t5===6?'°':t3===4&&t5===8?'+':'?';
+    const idxs = [(i+0)%7, (i+2)%7, (i+4)%7];
+    const labels = ['R', t3===4?'3':'b3', t5===7?'5':t5===6?'b5':'#5'];
+    const degMap3 = {};
+    idxs.forEach((j, k) => { degMap3[(rootSemi + ivs[j]) % 12] = labels[k]; });
     return {
-      name:  resolvedName(rootSemi, i, iv) + q,
-      notes: new Set([(rootSemi+iv)%12, (rootSemi+ivs[(i+2)%7])%12, (rootSemi+ivs[(i+4)%7])%12]),
+      name:   resolvedName(rootSemi, i, iv) + q,
+      notes:  new Set(idxs.map(j => (rootSemi + ivs[j]) % 12)),
+      degMap3,
+    };
+  });
+}
+
+function get7ths(rootSemi, modeIdx) {
+  const ivs = MODES[modeIdx].intervals;
+  return ivs.map((iv, i) => {
+    const t3 = ((ivs[(i+2)%7] - iv) + 12) % 12;
+    const t5 = ((ivs[(i+4)%7] - iv) + 12) % 12;
+    const t7 = ((ivs[(i+6)%7] - iv) + 12) % 12;
+    const qname = t3===4&&t5===7&&t7===11?'maj7':
+                  t3===3&&t5===7&&t7===10?'m7':
+                  t3===4&&t5===7&&t7===10?'7':
+                  t3===3&&t5===6&&t7===10?'ø7':
+                  t3===3&&t5===6&&t7===9?'°7':'?';
+    const idxs = [(i+0)%7, (i+2)%7, (i+4)%7, (i+6)%7];
+    const labels = ['R', t3===4?'3':'b3', t5===7?'5':t5===6?'b5':'#5', t7===11?'7':t7===10?'b7':'bb7'];
+    const degMap7 = {};
+    idxs.forEach((j, k) => { degMap7[(rootSemi + ivs[j]) % 12] = labels[k]; });
+    return {
+      name:   resolvedName(rootSemi, i, iv) + qname,
+      notes:  new Set(idxs.map(j => (rootSemi + ivs[j]) % 12)),
+      degMap7,
     };
   });
 }
@@ -313,6 +342,7 @@ function buildSVG(rootSemi, modeIdx) {
   setLayout();
   const isBox    = selFrets === 'box';
   const isTriads = selFrets === 'triads';
+  const is7ths   = selFrets === '7ths';
   FRET_START = isBox ? getBoxStart(rootSemi) : 1;
 
   const mode     = MODES[modeIdx];
@@ -328,9 +358,11 @@ function buildSVG(rootSemi, modeIdx) {
     degMap[semi]  = interval === 0 ? 'R' : mode.degrees[idx];
   });
 
-  // Triad set for current selection
-  const triads   = getTriads(rootSemi, modeIdx);
-  const triadSet = selTriad !== null ? triads[selTriad].notes : null;
+  // Chord set and chord-relative degree labels for current selection
+  const chords      = is7ths ? get7ths(rootSemi, modeIdx) : getTriads(rootSemi, modeIdx);
+  const triadSet    = selTriad !== null ? chords[selTriad].notes : null;
+  const chordDegMap = selTriad !== null ? (is7ths ? chords[selTriad].degMap7 : chords[selTriad].degMap3) : null;
+  const isGhostMode = isTriads || is7ths;
 
   const svgW = LP + OPEN_W + NUT_W + NFRETS_D * FW + 24;
   const svgH = TP + (NSTR - 1) * SH + BP;
@@ -384,7 +416,7 @@ function buildSVG(rootSemi, modeIdx) {
   }
 
   // fret numbers below the bottom string
-  const fretNumY = TP + (NSTR - 1) * SH + 18;
+  const fretNumY = TP + (NSTR - 1) * SH + DOT_R + 12;
   for (let f = FRET_START; f <= fretEnd; f++) {
     const x   = fretCX(f);
     const hot = SINGLE_DOTS.includes(f) || DOUBLE_DOTS.includes(f);
@@ -402,8 +434,9 @@ function buildSVG(rootSemi, modeIdx) {
       const semi = TUNING[s] % 12;
       const type = classify(semi, rootSemi, charSet, scaleSet, triadSet);
       if (!type) continue;
-      const ghost = isTriads && triadSet && type !== 'root' && type !== 'triad';
-      p.push(dot(LP + OPEN_W / 2, strY(s), nameMap[semi] || '', degMap[semi] || '', ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
+      const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
+      const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
+      p.push(dot(LP + OPEN_W / 2, strY(s), nameMap[semi] || '', deg, ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
     }
   }
 
@@ -413,8 +446,9 @@ function buildSVG(rootSemi, modeIdx) {
       const semi = (TUNING[s] + f) % 12;
       const type = classify(semi, rootSemi, charSet, scaleSet, triadSet);
       if (!type) continue;
-      const ghost = isTriads && triadSet && type !== 'root' && type !== 'triad';
-      p.push(dot(fretCX(f), strY(s), nameMap[semi] || '', degMap[semi] || '', ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
+      const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
+      const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
+      p.push(dot(fretCX(f), strY(s), nameMap[semi] || '', deg, ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
     }
   }
 
@@ -522,13 +556,13 @@ function initLabelToggle() {
 
 function initFretToggle() {
   const fw = document.getElementById('fret-btns');
-  [{ label: '3NPS', val: 'box' }, { label: '15 frets', val: 15 }, { label: '24 frets', val: 24 }, { label: 'Triads', val: 'triads' }].forEach(({ label, val }) => {
+  [{ label: '3NPS', val: 'box' }, { label: '15 frets', val: 15 }, { label: '24 frets', val: 24 }, { label: 'Triads', val: 'triads' }, { label: '7ths', val: '7ths' }].forEach(({ label, val }) => {
     const b = document.createElement('button');
     b.className = 'btn' + (val === selFrets ? ' mode-active' : '');
     b.textContent = label;
     b.onclick = () => {
       selFrets = val;
-      if (val === 'triads' && selTriad === null) selTriad = 0;
+      if ((val === 'triads' || val === '7ths') && selTriad === null) selTriad = 0;
       fw.querySelectorAll('.btn').forEach(el => el.className = 'btn');
       b.className = 'btn mode-active';
       render();
@@ -538,9 +572,13 @@ function initFretToggle() {
 }
 
 function buildTriadBtns() {
+  const is7ths  = selFrets === '7ths';
+  const label   = document.getElementById('chord-label');
+  if (label) label.textContent = is7ths ? '7th' : 'Triad';
+
   const tw = document.getElementById('triad-btns');
   tw.innerHTML = '';
-  const triads = getTriads(selKey, selMode);
+  const chords = is7ths ? get7ths(selKey, selMode) : getTriads(selKey, selMode);
 
   const none = document.createElement('button');
   none.className = 'btn' + (selTriad === null ? ' mode-active' : '');
@@ -553,10 +591,10 @@ function buildTriadBtns() {
   };
   tw.appendChild(none);
 
-  triads.forEach((triad, i) => {
+  chords.forEach((chord, i) => {
     const b = document.createElement('button');
     b.className = 'btn' + (i === selTriad ? ' mode-active' : '');
-    b.textContent = triad.name;
+    b.textContent = chord.name;
     b.onclick = () => {
       selTriad = i;
       tw.querySelectorAll('.btn').forEach(el => el.className = 'btn');

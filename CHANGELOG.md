@@ -1,5 +1,16 @@
 # Changelog — Modal Fretboard
 
+## v1.2 — Build 26062803 (2026-06-28)
+
+### Changes
+- Fret numbers pushed further below neck — no longer overlaps note dots
+- Triads view: interval labels are now chord-relative (Dm shows R, b3, 5 — not 2, 4, 6)
+- Added **7ths view** — diatonic 7th chord arpeggios (Cmaj7, Dm7, Em7, Fmaj7, G7, Am7, Bø7) with chord-relative labels (R, b3, b5, b7 etc.)
+- Legend: "Triad" → "Chord tone" (applies to both triads and 7th arpeggios)
+- Control row label dynamically switches between "Triad" and "7th" based on view
+
+---
+
 ## v1.1 — Build 26062802 (2026-06-28)
 
 ### Changes
@@ -26,13 +37,6 @@ Initial public release.
 
 ### Music theory
 - Butter notes: the 3rd of every scale is always highlighted, plus the interval(s) that uniquely define each mode vs its neighbors
-  - Ionian: maj3 + maj7
-  - Dorian: b3 + natural 6
-  - Phrygian: b2 + b3 + b6
-  - Lydian: #4 + maj3 + maj7
-  - Mixolydian: maj3 + b7
-  - Aeolian: b3 + b6
-  - Locrian: b2 + b3 + b5
 
 ### Design
 - Light is Beauty brand: Syne 800 title, DM Mono labels, Proximity Blue (#3EB8F0) accents
