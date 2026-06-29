@@ -179,7 +179,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.5 · build 26062903</div>
+<div class="build-tag">v1.5 · build 26062904</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -748,20 +748,8 @@ function makePadReverb(ctx) {
 }
 
 function buildPadMidi() {
-  const isGhostMode = selFrets === 'triads' || selFrets === '7ths';
-  const is7ths = selFrets === '7ths';
-  let notes, chordRoot;
-  if (isGhostMode && selTriad !== null) {
-    const chords = is7ths ? get7ths(selKey, selMode) : getTriads(selKey, selMode);
-    const chord = chords[selTriad];
-    notes = chord.notes;
-    const dm = is7ths ? chord.degMap7 : chord.degMap3;
-    chordRoot = parseInt(Object.keys(dm).find(k => dm[k] === 'R'));
-  } else {
-    const chords = getTriads(selKey, selMode);
-    notes = chords[0].notes;
-    chordRoot = selKey;
-  }
+  const notes = getTriads(selKey, selMode)[0].notes; // always the I chord of the key
+  const chordRoot = selKey;
   const sorted = [...notes].sort((a, b) => ((a - chordRoot + 12) % 12) - ((b - chordRoot + 12) % 12));
   const midis = [chordRoot + 36]; // bass root ~octave 2
   let prev = midis[0];
