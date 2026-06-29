@@ -179,7 +179,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.5 · build 26062905</div>
+<div class="build-tag">v1.5 · build 26062906</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -706,6 +706,7 @@ function buildTriadBtns() {
 }
 
 function render() {
+  if (padPlaying && (selKey !== padPrevKey || selMode !== padPrevMode)) restartPad();
   buildKeyBtns();
   buildSVG(selKey, selMode);
   updateInfo(selKey, selMode);
@@ -731,6 +732,7 @@ function initNotationToggle() {
 
 // ── Pad ──────────────────────────────────────────────────────────────────────
 let padCtx = null, padGain = null, padNodes = [], padPlaying = false;
+let padPrevKey = null, padPrevMode = null;
 
 function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
@@ -813,11 +815,32 @@ function togglePad() {
   const btn = document.getElementById('pad-btn');
   if (!padPlaying) {
     startPad(); padPlaying = true;
+    padPrevKey = selKey; padPrevMode = selMode;
     btn.textContent = '■'; btn.classList.add('pad-active');
   } else {
     stopPad(false); padPlaying = false;
     btn.textContent = '♪'; btn.classList.remove('pad-active');
   }
+}
+
+function restartPad() {
+  if (!padPlaying) return;
+  // Capture and fade out the current context independently
+  if (padGain && padCtx) {
+    const oldGain = padCtx.createGain();  // dummy — use padGain directly
+    const oldCtx  = padCtx;
+    const oldNodes = padNodes.slice();
+    const now = oldCtx.currentTime;
+    padGain.gain.setValueAtTime(padGain.gain.value, now);
+    padGain.gain.linearRampToValueAtTime(0, now + 0.35);
+    setTimeout(() => {
+      oldNodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
+      try { oldCtx.close(); } catch(e) {}
+    }, 500);
+    padCtx = null; padGain = null; padNodes = [];
+  }
+  startPad();
+  padPrevKey = selKey; padPrevMode = selMode;
 }
 
 function resetPad() {
