@@ -102,6 +102,16 @@
   .leg-dot.triad { background: #db3eb1; }
   .leg-dot.scale { background: rgba(62,184,240,0.5); }
 
+  /* ── Pad button ── */
+  .pad-btn {
+    background: #101e30; border: 1px solid #1d3050;
+    color: #3eb8f0; font-size: 15px; padding: 2px 11px;
+    border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    line-height: 1.6; margin-left: 0.5rem; flex-shrink: 0;
+  }
+  .pad-btn:hover { background: #1a2e48; }
+  .pad-btn.pad-active { background: #db3eb1; border-color: #a02b82; color: #fff; }
+
   /* ── Build tag ── */
   .build-tag { font-family: 'DM Mono', monospace; font-size: 10px; color: #2a3a50; margin-top: 2rem; letter-spacing: 0.1em; }
 </style>
@@ -141,6 +151,7 @@
       <div class="info-top">
         <span class="info-title" id="info-title"></span>
         <span class="info-alias" id="info-alias"></span>
+        <button id="pad-btn" class="pad-btn" onclick="togglePad()">♪</button>
       </div>
       <div class="note-strip" id="note-strip"></div>
     </div>
@@ -163,7 +174,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.4 · build 26062901</div>
+<div class="build-tag">v1.5 · build 26062902</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -462,10 +473,12 @@ function buildSVG(rootSemi, modeIdx) {
       if (!type) continue;
       const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
       const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
+      const isCharTone = !ghost && charSet.has(semi);
       const colors = ghost ? DOT_COLORS.scale_ghost
         : (isGhostMode && triadSet) ? (
             (chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root
             : (type === 'root') ? DOT_COLORS.root_faded
+            : isCharTone ? DOT_COLORS.char
             : DOT_COLORS.triad
           )
         : DOT_COLORS[type];
@@ -481,10 +494,12 @@ function buildSVG(rootSemi, modeIdx) {
       if (!type) continue;
       const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
       const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
+      const isCharTone = !ghost && charSet.has(semi);
       const colors = ghost ? DOT_COLORS.scale_ghost
         : (isGhostMode && triadSet) ? (
             (chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root
             : (type === 'root') ? DOT_COLORS.root_faded
+            : isCharTone ? DOT_COLORS.char
             : DOT_COLORS.triad
           )
         : DOT_COLORS[type];
@@ -547,6 +562,7 @@ function updateChordStrip(rootSemi, modeIdx) {
   const degMap = is7ths ? chord.degMap7 : chord.degMap3;
 
   const mode = MODES[modeIdx];
+  const charSet = new Set([...mode.characteristic, mode.intervals[2]].map(i => (rootSemi + i) % 12));
   const nameMap = {};
   mode.intervals.forEach((interval, idx) => {
     nameMap[(rootSemi + interval) % 12] = resolvedName(rootSemi, idx, interval);
@@ -563,9 +579,11 @@ function updateChordStrip(rootSemi, modeIdx) {
   entries.forEach(([semi, intLabel]) => {
     const name = nameMap[semi] || '';
     const isRoot = intLabel === 'R';
+    const isChar = !isRoot && charSet.has(semi);
     const badge = document.createElement('div');
-    badge.className = 'note-badge' + (isRoot ? ' nb-chord-root' : ' nb-chord-tone');
-    badge.innerHTML = `<span class="nb-deg ${isRoot ? 'chord-root' : 'chord-tone'}">${intLabel}</span><span class="nb-name ${isRoot ? 'chord-root' : 'chord-tone'}">${name}</span>`;
+    badge.className = 'note-badge' + (isRoot ? ' nb-chord-root' : isChar ? ' nb-char' : ' nb-chord-tone');
+    const cls = isRoot ? 'chord-root' : isChar ? 'char' : 'chord-tone';
+    badge.innerHTML = `<span class="nb-deg ${cls}">${intLabel}</span><span class="nb-name ${cls}">${name}</span>`;
     strip.appendChild(badge);
   });
 }
@@ -683,6 +701,7 @@ function buildTriadBtns() {
 }
 
 function render() {
+  resetPad();
   buildKeyBtns();
   buildSVG(selKey, selMode);
   updateInfo(selKey, selMode);
@@ -704,6 +723,116 @@ function initNotationToggle() {
     };
     nw.appendChild(b);
   });
+}
+
+// ── Pad ──────────────────────────────────────────────────────────────────────
+let padCtx = null, padGain = null, padNodes = [], padPlaying = false;
+
+function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+function makePadReverb(ctx) {
+  const sr = ctx.sampleRate, len = sr * 2;
+  const buf = ctx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+  }
+  const conv = ctx.createConvolver();
+  conv.buffer = buf;
+  return conv;
+}
+
+function buildPadMidi() {
+  const isGhostMode = selFrets === 'triads' || selFrets === '7ths';
+  const is7ths = selFrets === '7ths';
+  let notes, chordRoot;
+  if (isGhostMode && selTriad !== null) {
+    const chords = is7ths ? get7ths(selKey, selMode) : getTriads(selKey, selMode);
+    const chord = chords[selTriad];
+    notes = chord.notes;
+    const dm = is7ths ? chord.degMap7 : chord.degMap3;
+    chordRoot = parseInt(Object.keys(dm).find(k => dm[k] === 'R'));
+  } else {
+    const chords = getTriads(selKey, selMode);
+    notes = chords[0].notes;
+    chordRoot = selKey;
+  }
+  const sorted = [...notes].sort((a, b) => ((a - chordRoot + 12) % 12) - ((b - chordRoot + 12) % 12));
+  const midis = [chordRoot + 36]; // bass root ~octave 2
+  let prev = midis[0];
+  sorted.forEach(semi => {
+    let midi = semi + 48;
+    while (midi <= prev) midi += 12;
+    prev = midi;
+    midis.push(midi);
+  });
+  return midis;
+}
+
+function startPad() {
+  padCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = padCtx.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.ratio.value = 4;
+  comp.connect(padCtx.destination);
+
+  padGain = padCtx.createGain();
+  padGain.gain.setValueAtTime(0, padCtx.currentTime);
+  padGain.gain.linearRampToValueAtTime(0.65, padCtx.currentTime + 1.5);
+
+  const reverb = makePadReverb(padCtx);
+  const revGain = padCtx.createGain();
+  revGain.gain.value = 0.4;
+  reverb.connect(revGain);
+  revGain.connect(comp);
+
+  const lpf = padCtx.createBiquadFilter();
+  lpf.type = 'lowpass'; lpf.frequency.value = 1800; lpf.Q.value = 0.7;
+  lpf.connect(padGain);
+  padGain.connect(comp);
+
+  buildPadMidi().forEach((midi, i) => {
+    const freq = midiToFreq(midi);
+    const ng = padCtx.createGain();
+    ng.gain.value = i === 0 ? 0.12 : 0.17;
+    [['sine', 1], ['triangle', 1.003], ['sine', 0.997]].forEach(([type, det]) => {
+      const osc = padCtx.createOscillator();
+      osc.type = type; osc.frequency.value = freq * det;
+      osc.connect(ng); osc.start(); padNodes.push(osc);
+    });
+    ng.connect(lpf); ng.connect(reverb); padNodes.push(ng);
+  });
+}
+
+function stopPad(instant) {
+  if (!padGain || !padCtx) return;
+  const now = padCtx.currentTime;
+  padGain.gain.setValueAtTime(padGain.gain.value, now);
+  padGain.gain.linearRampToValueAtTime(0, now + (instant ? 0.05 : 1.5));
+  const ctx = padCtx;
+  setTimeout(() => {
+    padNodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
+    padNodes = [];
+    try { ctx.close(); } catch(e) {}
+    if (padCtx === ctx) { padCtx = null; padGain = null; }
+  }, instant ? 150 : 1800);
+}
+
+function togglePad() {
+  const btn = document.getElementById('pad-btn');
+  if (!padPlaying) {
+    startPad(); padPlaying = true;
+    btn.textContent = '■'; btn.classList.add('pad-active');
+  } else {
+    stopPad(false); padPlaying = false;
+    btn.textContent = '♪'; btn.classList.remove('pad-active');
+  }
+}
+
+function resetPad() {
+  if (!padPlaying) return;
+  stopPad(true); padPlaying = false;
+  const btn = document.getElementById('pad-btn');
+  if (btn) { btn.textContent = '♪'; btn.classList.remove('pad-active'); }
 }
 
 initButtons();
