@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upper Extensions — Modal Fretboard Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Syne', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0d1a2e;
+    color: #c8d8e8;
+    font-size: 17px;
+    line-height: 1.7;
+    padding: 3rem 2rem 5rem;
+  }
+
+  .page { max-width: 760px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .site-link {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #3eb8f0;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 2.5rem;
+    opacity: 0.8;
+  }
+  .site-link:hover { opacity: 1; }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .byline {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #3eb8f0;
+    margin-bottom: 3rem;
+  }
+
+  /* ── Sections ── */
+  h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin: 3rem 0 1rem;
+    letter-spacing: -0.01em;
+  }
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #e0eaf4;
+    margin: 2rem 0 0.5rem;
+  }
+  p { margin-bottom: 1rem; color: #b0c4d8; }
+  p strong { color: #e0eaf4; font-weight: 700; }
+
+  /* ── Rule ── */
+  hr { border: none; border-top: 1px solid #1e3050; margin: 3rem 0; }
+
+  /* ── Chord callout ── */
+  .chord-block {
+    background: #111e30;
+    border-left: 3px solid #3eb8f0;
+    border-radius: 0 6px 6px 0;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .chord-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.4rem;
+  }
+  .chord-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: #3eb8f0;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.9rem;
+  }
+
+  /* ── Extension table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+    font-size: 14px;
+  }
+  thead th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #4a6a8a;
+    padding: 0.5rem 0.5rem 0.5rem 0;
+    text-align: left;
+    border-bottom: 1px solid #1e3050;
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 0.6rem 0.5rem 0.6rem 0;
+    border-bottom: 1px solid #131e2e;
+    color: #b0c4d8;
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td .triad-name { font-weight: 700; color: #db3eb1; }
+  td .notes { font-family: 'DM Mono', monospace; font-size: 13px; color: #e0eaf4; }
+  td .extensions { font-family: 'DM Mono', monospace; font-size: 13px; color: #3eb8f0; }
+  td .flavor { font-size: 13px; color: #7a9ab8; }
+  /* chord-block detail tables: fixed narrow columns */
+  .chord-block table { table-layout: fixed; }
+  .chord-block table th:first-child,
+  .chord-block table td:first-child { width: 14%; }
+  .chord-block table th:nth-child(2),
+  .chord-block table td:nth-child(2) { width: 32%; }
+  .chord-block table th:nth-child(3),
+  .chord-block table td:nth-child(3) { width: 32%; }
+
+  /* ── Steps ── */
+  .steps { margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  .step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    background: #111e30;
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+  }
+  .step-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: #3eb8f0;
+    background: #0d1a2e;
+    border: 1px solid #1e3a5a;
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+    letter-spacing: 0.05em;
+  }
+  .step-text { font-size: 14px; color: #b0c4d8; line-height: 1.5; }
+  .step-text strong { color: #e0eaf4; }
+  kbd {
+    display: inline-block;
+    background: #1e3050;
+    border: 1px solid #2a4060;
+    border-radius: 4px;
+    padding: 0.05rem 0.45rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: #e0eaf4;
+    line-height: 1.5;
+  }
+
+  /* ── Insight box ── */
+  .insight {
+    background: #0a1520;
+    border: 1px solid #1e3050;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .insight-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #fbbf24;
+    margin-bottom: 0.5rem;
+  }
+  .insight p { margin-bottom: 0; }
+
+  /* ── Color chips ── */
+  .chip {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+  .chip-orange  { background: #f97316; }
+  .chip-magenta { background: #db3eb1; }
+  .chip-blue    { background: rgba(62,184,240,0.5); border: 1px solid #3eb8f0; }
+  .chip-yellow  { background: #fbbf24; }
+
+  /* ── Legend row ── */
+  .dot-legend {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    background: #111e30;
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    margin: 1.25rem 0;
+    font-size: 13px;
+    color: #7a9ab8;
+  }
+  .dot-legend span { display: flex; align-items: center; gap: 5px; }
+
+  /* ── CTA ── */
+  .cta {
+    display: inline-block;
+    margin-top: 1rem;
+    background: #3eb8f0;
+    color: #0d1a2e;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 0.65rem 1.4rem;
+    border-radius: 6px;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+  }
+  .cta:hover { background: #5ccbff; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: #2a3a50;
+    letter-spacing: 0.1em;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <a class="site-link" href="index.html">← Modal Fretboard</a>
+
+  <h1>Upper Extensions</h1>
+  <p class="byline">Superimposing triads to imply advanced harmony</p>
+
+  <p>
+    Larry Carlton built much of his signature sound on a deceptively simple idea: instead of outlining
+    the chord directly, play a <strong>diatonic triad from a higher scale degree</strong> over it.
+    Those triads naturally land on the 9th, 11th, and 13th — the color tones that give a chord its
+    sophistication — while the rhythm section holds down the root and basic harmony below.
+  </p>
+  <p>
+    The result sounds advanced but the shapes are simple. You're playing three-note triads you already
+    know, repositioned so they describe the extensions rather than the chord tones.
+  </p>
+
+  <hr>
+
+  <h2>The G7 example</h2>
+
+  <p>
+    G7 is the dominant chord in the key of C — the chord that creates the most tension and most
+    wants to resolve. <strong>G Mixolydian</strong> is the scale that lives over it: a major scale
+    with a flatted 7th (G A B C D E F). The defining tones are the major 3rd (B) and the flat 7th (F) —
+    the tritone that gives G7 its pull.
+  </p>
+  <p>
+    Over that G7 chord, Carlton targets two upper triads in particular:
+  </p>
+
+  <div class="chord-block">
+    <div class="chord-name">Am triad over G7</div>
+    <div class="chord-sub">A · C · E</div>
+    <table>
+      <thead><tr><th>Note</th><th>Interval in Am</th><th>Interval over G7</th></tr></thead>
+      <tbody>
+        <tr><td>A</td><td>Root</td><td class="extensions">9th</td></tr>
+        <tr><td>C</td><td>b3</td><td class="extensions">11th</td></tr>
+        <tr><td>E</td><td>5th</td><td class="extensions">13th</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px; color:#7a9ab8; margin:0;">
+      Three notes, three extensions. This is the richest upper structure over a dominant chord —
+      the full color palette in one shape.
+    </p>
+  </div>
+
+  <div class="chord-block">
+    <div class="chord-name">Dm triad over G7</div>
+    <div class="chord-sub">D · F · A</div>
+    <table>
+      <thead><tr><th>Note</th><th>Interval in Dm</th><th>Interval over G7</th></tr></thead>
+      <tbody>
+        <tr><td>D</td><td>Root</td><td class="extensions">5th</td></tr>
+        <tr><td>F</td><td>b3</td><td class="extensions">b7th</td></tr>
+        <tr><td>A</td><td>5th</td><td class="extensions">9th</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px; color:#7a9ab8; margin:0;">
+      More grounded — includes the b7 that defines the G7 sound, plus the 9th for color.
+      Great for outlining the chord while adding movement.
+    </p>
+  </div>
+
+  <div class="insight">
+    <div class="insight-label">The key insight</div>
+    <p>
+      The rhythm section is already playing G, B, D, F. You don't need to. Playing Am or Dm in
+      the upper register fills in the gaps — the extensions — and the ear hears the complete
+      extended chord without you having to spell it out.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Visualizing this in Modal Fretboard</h2>
+
+  <p>
+    Modal Fretboard makes this concrete. Set the app to G Mixolydian and you're looking at the
+    exact scale that lives over a G7. The butter notes (yellow) mark the B and F — the chord-defining
+    tritone. Then use the Triads view to isolate each upper structure and see precisely where those
+    extension shapes fall across the neck.
+  </p>
+
+  <h3>Step-by-step: the Am upper structure</h3>
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">01</span>
+      <div class="step-text">Set <strong>Key → G</strong> and <strong>Mode → 5. Mixolydian</strong>.
+      The fretboard now shows the scale that works over G7. Notice the yellow butter notes — B (maj3) and F (b7) — those are the interval that give G7 its tension.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">02</span>
+      <div class="step-text">Switch <strong>View → Triads</strong>. The app auto-selects the first
+      chord (G). This is the chord you're playing over — notice the chord tones highlighted.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">03</span>
+      <div class="step-text">Select <strong>Am</strong> from the Triad row. The three magenta dots
+      that light up — A, C, E — are your upper extension shape. The white-glow dot is the chord
+      root (A = the 9th of G7). The ghost blue dots are the remaining scale tones including the
+      actual G7 chord tones.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">04</span>
+      <div class="step-text">Switch <strong>Labels → Note</strong> to see note names on each dot,
+      or keep <strong>Interval</strong> to read the labels as intervals within the Am triad (R, b3, 5).
+      Either way, the three magenta dots are the extension cluster over G7.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">05</span>
+      <div class="step-text">Now select <strong>Dm</strong> to see the second upper structure.
+      The magenta dots shift to D, F, A — the 5th, b7, and 9th of G7. Compare the two shapes
+      on the neck and notice the overlap: A appears in both.</div>
+    </div>
+  </div>
+
+  <div class="dot-legend">
+    <span><span class="chip chip-orange"></span> G (key root)</span>
+    <span><span class="chip chip-yellow"></span> B, F (butter notes — the tritone)</span>
+    <span><span class="chip chip-magenta"></span> Upper structure triad (your target)</span>
+    <span><span class="chip chip-blue"></span> Remaining scale tones</span>
+  </div>
+
+  <h3>Going deeper: the 7ths view</h3>
+  <p>
+    Switch <strong>View → 7ths</strong> and select <strong>Am7</strong>. This gives you a
+    four-note arpeggio: A, C, E, G — the 9th, 11th, 13th, and root of G7 all in one shape.
+    This is the extended arpeggio version of the same idea: instead of a triad you're running
+    the full upper-structure chord.
+  </p>
+
+  <hr>
+
+  <h2>Other chord functions</h2>
+
+  <p>The same logic applies across any chord in the key. Here are the most useful upper structures (✦ marks a Lydian extension — see below):</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Chord</th>
+        <th>Mode</th>
+        <th>Upper triad</th>
+        <th>Notes</th>
+        <th>Extensions implied</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Cmaj7</td>
+        <td>Ionian</td>
+        <td><span class="triad-name">Em</span></td>
+        <td><span class="notes">E G B</span></td>
+        <td><span class="extensions">3, 5, maj7</span></td>
+      </tr>
+      <tr>
+        <td>Cmaj7</td>
+        <td>Ionian</td>
+        <td><span class="triad-name">G</span></td>
+        <td><span class="notes">G B D</span></td>
+        <td><span class="extensions">5, maj7, 9</span></td>
+      </tr>
+      <tr>
+        <td>Cmaj7</td>
+        <td>Ionian</td>
+        <td><span class="triad-name">Am</span></td>
+        <td><span class="notes">A C E</span></td>
+        <td><span class="extensions">13, R, 3</span></td>
+      </tr>
+      <tr style="border-top: 1px solid #1e3050;">
+        <td>Cmaj7</td>
+        <td style="color:#fbbf24;">Lydian</td>
+        <td><span class="triad-name">D</span></td>
+        <td><span class="notes">D F# A</span></td>
+        <td><span class="extensions">9, #11, 13 ✦</span></td>
+      </tr>
+      <tr>
+        <td>G7</td>
+        <td>Mixolydian</td>
+        <td><span class="triad-name">Am</span></td>
+        <td><span class="notes">A C E</span></td>
+        <td><span class="extensions">9, 11, 13</span></td>
+      </tr>
+      <tr>
+        <td>G7</td>
+        <td>Mixolydian</td>
+        <td><span class="triad-name">Dm</span></td>
+        <td><span class="notes">D F A</span></td>
+        <td><span class="extensions">5, b7, 9</span></td>
+      </tr>
+      <tr>
+        <td>Dm7</td>
+        <td>Dorian</td>
+        <td><span class="triad-name">Em°</span></td>
+        <td><span class="notes">E G Bb</span></td>
+        <td><span class="extensions">9, 11, b13</span></td>
+      </tr>
+      <tr>
+        <td>Dm7</td>
+        <td>Dorian</td>
+        <td><span class="triad-name">Am</span></td>
+        <td><span class="notes">A C E</span></td>
+        <td><span class="extensions">5, b7, 9</span></td>
+      </tr>
+      <tr>
+        <td>Am7</td>
+        <td>Aeolian</td>
+        <td><span class="triad-name">Em</span></td>
+        <td><span class="notes">E G B</span></td>
+        <td><span class="extensions">5, b7, 9</span></td>
+      </tr>
+      <tr>
+        <td>Am7</td>
+        <td>Aeolian</td>
+        <td><span class="triad-name">C</span></td>
+        <td><span class="notes">C E G</span></td>
+        <td><span class="extensions">b3, 5, b7</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    To explore any row in this table on the fretboard: set the Key and Mode to match the chord,
+    switch to Triads view, and select the listed upper triad. The magenta dots show you exactly
+    where those extension shapes live across all six strings.
+  </p>
+
+  <h3>✦ The Lydian color</h3>
+  <p>
+    The natural 11th (F over Cmaj7) is an avoid note — it sits a half-step above the major 3rd
+    (E) and creates a clash that muddies the chord. Lydian solves this by raising it a half-step
+    to the #11 (F#), which floats above the chord rather than rubbing against it. That single
+    raised note is what gives Lydian its signature "lifted," unresolved quality — the sound most
+    associated with dreamy, cinematic major chord moments.
+  </p>
+  <p>
+    The upper structure that delivers this color is the <strong>D major triad over Cmaj7</strong>:
+    D, F#, A — the 9th, #11, and 13th all at once. It's outside C Ionian (which has F natural),
+    so you're borrowing from C Lydian. The rhythm section stays on Cmaj7; you float the D triad
+    above it and the ear hears the full Lydian extension sound.
+  </p>
+
+  <div class="chord-block" style="border-color: #fbbf24;">
+    <div class="chord-name">D major triad over Cmaj7</div>
+    <div class="chord-sub" style="color:#fbbf24;">D · F# · A — Lydian color</div>
+    <table>
+      <thead><tr><th>Note</th><th>Interval in D</th><th>Interval over Cmaj7</th></tr></thead>
+      <tbody>
+        <tr><td>D</td><td>Root</td><td class="extensions">9th</td></tr>
+        <tr><td>F#</td><td>3</td><td class="extensions">#11th</td></tr>
+        <tr><td>A</td><td>5th</td><td class="extensions">13th</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px; color:#7a9ab8; margin:0;">
+      The F# is the note that does all the work. It's the Lydian #11 — the difference between
+      Ionian (grounded, resolved) and Lydian (floating, expansive).
+    </p>
+  </div>
+
+  <h3>Hearing the difference in Modal Fretboard</h3>
+  <div class="steps">
+    <div class="step">
+      <span class="step-num">01</span>
+      <div class="step-text">Set <strong>Key → C, Mode → 1. Ionian</strong>, View → Triads.
+      Select the <strong>B°</strong> chord (last in the row). The triad on the 7th degree in
+      Ionian is B diminished — B, D, F. The F natural is there, a minor 2nd above E.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">02</span>
+      <div class="step-text">Now switch <strong>Mode → 4. Lydian</strong> without changing the key.
+      The butter notes shift — the #4 (F#) appears in yellow, marking the characteristic Lydian interval.
+      The triad row updates: the chord on the 2nd degree is now <strong>D major</strong> instead of D°.</div>
+    </div>
+    <div class="step">
+      <span class="step-num">03</span>
+      <div class="step-text">Select <strong>D</strong> from the Triad row. The magenta dots show
+      D, F#, A across the neck — your Lydian upper structure. The F# (highlighted as a butter note)
+      is the exact note that produces the floating quality when played over a Cmaj7 chord.</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <div class="insight-label">Practice tip</div>
+    <p>
+      Start with the G7 → Am shape. Find it in three or four positions on the neck using the
+      Triads view, then practice connecting those positions as a single phrase over a G7 vamp.
+      Once that feels natural, add the Dm shape and practice moving between the two. You're
+      building vocabulary that implies the full extended chord from the top down.
+    </p>
+  </div>
+
+  <hr>
+
+  <p>
+    Modal Fretboard is designed to make this kind of relationship visible. Every diatonic triad
+    is a potential upper structure. Every mode shows you which extensions are available.
+  </p>
+
+  <a class="cta" href="index.html">Open Modal Fretboard →</a>
+
+  <div class="footer" style="margin-top:4rem;">
+    A <a href="https://github.com/lightisbeauty" style="color:inherit;">Light is Beauty</a> guide ·
+    Modal Fretboard
+  </div>
+
+</div>
+</body>
+</html>
