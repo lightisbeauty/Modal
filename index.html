@@ -103,14 +103,19 @@
   .leg-dot.scale { background: rgba(62,184,240,0.5); }
 
   /* ── Pad button ── */
+  @keyframes pad-pulse {
+    0%, 100% { box-shadow: 0 0 4px 1px rgba(62,184,240,0.15); border-color: #1d3050; }
+    50%       { box-shadow: 0 0 10px 3px rgba(62,184,240,0.55); border-color: #3eb8f0; }
+  }
   .pad-btn {
     background: #101e30; border: 1px solid #1d3050;
     color: #3eb8f0; font-size: 15px; padding: 2px 11px;
-    border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    border-radius: 6px; cursor: pointer; transition: background 0.15s;
     line-height: 1.6; margin-left: 0.5rem; flex-shrink: 0;
+    animation: pad-pulse 2.8s ease-in-out infinite;
   }
   .pad-btn:hover { background: #1a2e48; }
-  .pad-btn.pad-active { background: #db3eb1; border-color: #a02b82; color: #fff; }
+  .pad-btn.pad-active { background: #db3eb1; border-color: #a02b82; color: #fff; animation: none; box-shadow: 0 0 10px 3px rgba(219,62,177,0.45); }
 
   /* ── Build tag ── */
   .build-tag { font-family: 'DM Mono', monospace; font-size: 10px; color: #2a3a50; margin-top: 2rem; letter-spacing: 0.1em; }
@@ -174,7 +179,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.5 · build 26062902</div>
+<div class="build-tag">v1.5 · build 26062903</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
