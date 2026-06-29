@@ -330,9 +330,10 @@ function classify(semi, rootSemi, charSet, scaleSet, triadSet) {
 }
 
 const DOT_COLORS = {
-  root:  { fill: '#f97316', stroke: '#c2410c', text: '#fff', opacity: 0.85 },
-  char:  { fill: '#fbbf24', stroke: '#d97706', text: '#fff', opacity: 0.85 },
+  root:        { fill: '#f97316', stroke: '#c2410c', text: '#fff', opacity: 0.85 },
+  char:        { fill: '#fbbf24', stroke: '#d97706', text: '#fff', opacity: 0.85 },
   triad:       { fill: '#db3eb1', stroke: '#a02b82', text: '#fff', opacity: 0.85 },
+  triad_root:  { fill: '#db3eb1', stroke: '#a02b82', text: '#fff', opacity: 0.85, ring: 'rgba(255,255,255,0.75)' },
   scale:       { fill: '#3eb8f0', stroke: '#2090be', text: '#fff', opacity: 0.28 },
   scale_ghost: { fill: '#3eb8f0', stroke: '#2090be', text: '#fff', opacity: 0.10, textOpacity: 0 },
 };
@@ -436,7 +437,10 @@ function buildSVG(rootSemi, modeIdx) {
       if (!type) continue;
       const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
       const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
-      p.push(dot(LP + OPEN_W / 2, strY(s), nameMap[semi] || '', deg, ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
+      const colors = ghost ? DOT_COLORS.scale_ghost
+        : (isGhostMode && triadSet) ? ((chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root : DOT_COLORS.triad)
+        : DOT_COLORS[type];
+      p.push(dot(LP + OPEN_W / 2, strY(s), nameMap[semi] || '', deg, colors));
     }
   }
 
@@ -448,7 +452,10 @@ function buildSVG(rootSemi, modeIdx) {
       if (!type) continue;
       const ghost = isGhostMode && triadSet && type !== 'root' && type !== 'triad';
       const deg = (!ghost && chordDegMap && chordDegMap[semi] !== undefined) ? chordDegMap[semi] : (degMap[semi] || '');
-      p.push(dot(fretCX(f), strY(s), nameMap[semi] || '', deg, ghost ? DOT_COLORS.scale_ghost : DOT_COLORS[type]));
+      const colors = ghost ? DOT_COLORS.scale_ghost
+        : (isGhostMode && triadSet) ? ((chordDegMap && chordDegMap[semi] === 'R') ? DOT_COLORS.triad_root : DOT_COLORS.triad)
+        : DOT_COLORS[type];
+      p.push(dot(fretCX(f), strY(s), nameMap[semi] || '', deg, colors));
     }
   }
 
@@ -456,13 +463,14 @@ function buildSVG(rootSemi, modeIdx) {
 }
 
 function dot(cx, cy, nname, deg, c) {
-  const label      = selLabel === 'interval' ? deg : nname;
-  const fs         = label.length > 2 ? 7 : label.length === 2 ? 8 : 10;
+  const label       = selLabel === 'interval' ? deg : nname;
+  const fs          = label.length > 2 ? 7 : label.length === 2 ? 8 : 10;
   const textOpacity = c.textOpacity !== undefined ? c.textOpacity : 1;
-  return [
-    `<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.2" fill-opacity="${c.opacity}"/>`,
-    `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" fill-opacity="${textOpacity}">${label}</text>`,
-  ].join('');
+  const parts = [];
+  if (c.ring) parts.push(`<circle cx="${cx}" cy="${cy}" r="${DOT_R + 3}" fill="none" stroke="${c.ring}" stroke-width="2"/>`);
+  parts.push(`<circle cx="${cx}" cy="${cy}" r="${DOT_R}" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.2" fill-opacity="${c.opacity}"/>`);
+  parts.push(`<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="${fs}" font-weight="700" font-family="system-ui,sans-serif" fill="#fff" fill-opacity="${textOpacity}">${label}</text>`);
+  return parts.join('');
 }
 
 // ── Info panel ───────────────────────────────────────────────────────────────
