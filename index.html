@@ -184,7 +184,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.5 · build 26062907</div>
+<div class="build-tag">v1.5 · build 26062908</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -711,7 +711,7 @@ function buildTriadBtns() {
 }
 
 function render() {
-  if (padPlaying && (selKey !== padPrevKey || selMode !== padPrevMode)) restartPad();
+  if (padPlaying && (selKey !== padPrevKey || selMode !== padPrevMode || selFrets !== padPrevFrets)) restartPad();
   buildKeyBtns();
   buildSVG(selKey, selMode);
   updateInfo(selKey, selMode);
@@ -738,7 +738,7 @@ function initNotationToggle() {
 
 // ── Pad ──────────────────────────────────────────────────────────────────────
 let padCtx = null, padGain = null, padNodes = [], padPlaying = false;
-let padPrevKey = null, padPrevMode = null;
+let padPrevKey = null, padPrevMode = null, padPrevFrets = null;
 
 function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
@@ -755,7 +755,8 @@ function makePadReverb(ctx) {
 }
 
 function buildPadMidi() {
-  const notes = getTriads(selKey, selMode)[0].notes; // always the I chord of the key
+  const is7ths = selFrets === '7ths';
+  const notes = (is7ths ? get7ths(selKey, selMode)[0] : getTriads(selKey, selMode)[0]).notes;
   const chordRoot = selKey;
   const sorted = [...notes].sort((a, b) => ((a - chordRoot + 12) % 12) - ((b - chordRoot + 12) % 12));
   const midis = [chordRoot + 36]; // bass root ~octave 2
@@ -819,14 +820,16 @@ function stopPad(instant) {
 
 function updatePadBtn() {
   const btn = document.getElementById('pad-btn');
-  if (btn) btn.textContent = getTriads(selKey, selMode)[0].name;
+  if (!btn) return;
+  const is7ths = selFrets === '7ths';
+  btn.textContent = (is7ths ? get7ths(selKey, selMode)[0] : getTriads(selKey, selMode)[0]).name;
 }
 
 function togglePad() {
   const btn = document.getElementById('pad-btn');
   if (!padPlaying) {
     startPad(); padPlaying = true;
-    padPrevKey = selKey; padPrevMode = selMode;
+    padPrevKey = selKey; padPrevMode = selMode; padPrevFrets = selFrets;
     btn.classList.add('pad-active');
   } else {
     stopPad(false); padPlaying = false;
@@ -851,7 +854,7 @@ function restartPad() {
     padCtx = null; padGain = null; padNodes = [];
   }
   startPad();
-  padPrevKey = selKey; padPrevMode = selMode;
+  padPrevKey = selKey; padPrevMode = selMode; padPrevFrets = selFrets;
 }
 
 function resetPad() {
