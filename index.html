@@ -184,7 +184,7 @@
   <div class="leg-item"><div class="leg-dot scale"></div>Scale tone</div>
 </div>
 
-<div class="build-tag">v1.5 · build 26062908</div>
+<div class="build-tag">v1.5 · build 26062909</div>
 
 <script>
 // ── Music data ──────────────────────────────────────────────────────────────
@@ -759,8 +759,8 @@ function buildPadMidi() {
   const notes = (is7ths ? get7ths(selKey, selMode)[0] : getTriads(selKey, selMode)[0]).notes;
   const chordRoot = selKey;
   const sorted = [...notes].sort((a, b) => ((a - chordRoot + 12) % 12) - ((b - chordRoot + 12) % 12));
-  const midis = [chordRoot + 36]; // bass root ~octave 2
-  let prev = midis[0];
+  const midis = [];
+  let prev = chordRoot + 35; // anchor just below octave 3 so root lands at C3
   sorted.forEach(semi => {
     let midi = semi + 48;
     while (midi <= prev) midi += 12;
