@@ -1,5 +1,51 @@
 # Changelog — Modal Fretboard
 
+## v1.5 — Build 26062908 (2026-06-29)
+
+### Pad audio
+
+- Added **♪ Pad button** — drones the I chord of the current key/mode as a sustained pad (slow attack, LPF warmth, convolution reverb)
+- Button displays the live chord name in Syne 800 (e.g. "D", "Dm7") — updates with key and mode
+- In **7ths view** the pad plays and labels the full 7th chord (Dmaj7, G7, Am7, etc.)
+- Pad **persists across all navigation** — changing triads, view, or labels doesn't stop it
+- Switching **key or mode crossfades** (~0.35s) to the new I chord in real-time
+- Switching between Triads and 7ths views also triggers a crossfade to the correct voicing
+- Button pulses with a slow blue glow at rest; turns solid magenta while playing
+- Button positioned to the right of the chord strip with a matching vertical separator
+
+### Chord mode colors
+
+- **Butter notes stay yellow in chord mode** — chord tones that are also characteristic intervals (e.g. F# in Bm over D Lydian) now render yellow on the fretboard and in the chord strip, not magenta
+- **Key center root fades** when a chord is selected and the key root is not the chord root — shown as a faint orange ghost circle (no label) to eliminate the competing-roots confusion
+
+### Chord info strip
+
+- Added **chord info panel** next to the key note strip — visible in Triads and 7ths view whenever a chord is selected
+- Shows chord name (in magenta) + a row of tone badges with chord-relative interval labels (R, b3, 5 etc.) and note names
+- Butter-note chord tones show in yellow within the strip
+
+---
+
+## v1.4 — Build 26062901 (2026-06-29)
+
+### Changes
+
+- **Key center root fades** in Triads/7ths view when it is not the chord root (initial implementation)
+- **Chord info strip** added alongside the key note strip (initial implementation)
+- **upper-extensions.html Lydian walkthrough fixed** — step order now shows butter notes in 15-fret view before entering Triads, so F# correctly appears yellow when switching to Lydian
+
+---
+
+## v1.3 — Build 26062804 (2026-06-28)
+
+### Changes
+
+- In Triads/7ths view, all visible dots are now magenta — the key-center orange root is suppressed to avoid competing roots
+- **Chord root** distinguished by a white glow ring (3px halo) around the magenta dot
+- Version/build tag added to bottom of page
+
+---
+
 ## v1.2 — Build 26062803 (2026-06-28)
 
 ### Changes
